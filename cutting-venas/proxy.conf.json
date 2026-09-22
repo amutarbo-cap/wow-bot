@@ -1,0 +1,20 @@
+{
+  "/wcl/oauth": {
+    "target": "https://www.warcraftlogs.com",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": { "^/wcl/oauth": "/oauth/token" }
+  },
+  "/wcl/api": {
+    "target": "https://www.warcraftlogs.com",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": { "^/wcl/api": "/api/v2/client" }
+  },
+  "/raidbots": {
+    "target": "https://www.raidbots.com",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": { "^/raidbots": "" }
+  }
+}
