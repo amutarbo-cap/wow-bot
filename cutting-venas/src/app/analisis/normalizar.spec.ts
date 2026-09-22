@@ -99,19 +99,43 @@ describe('normalizar agrupa entradas con el mismo nombre', () => {
     expect(earthquakes[0].dano).toBe(185972);
   });
 
-  it('en supervivencia: fusion de dano recibido con el mismo nombre suma totales', () => {
+  it('en supervivencia: fusion de dano recibido con el mismo nombre suma totales y mantiene guid/origen del mayor', () => {
     const raw = { ...RAW.rokka };
     if (raw.detalle.danoRecibido?.data.entries) {
-      const firstEntry = raw.detalle.danoRecibido.data.entries[0];
-      if (firstEntry) {
-        // Create a copy with different guid
-        const duplicate = { ...firstEntry, guid: 99999 };
-        raw.detalle.danoRecibido.data.entries = [firstEntry, duplicate, ...raw.detalle.danoRecibido.data.entries.slice(1)];
+      const e0 = raw.detalle.danoRecibido.data.entries[0];
+      if (e0) {
+        raw.detalle.danoRecibido.data.entries = [
+          { ...e0, guid: 1, total: 100, actorName: 'A' },
+          { ...e0, guid: 2, total: 200, actorName: 'B' },
+          { ...e0, guid: 3, total: 50, actorName: 'C' },
+          ...raw.detalle.danoRecibido.data.entries.slice(1),
+        ];
         const d = normalizar(raw, SPECS.elemental);
-        const danoName = firstEntry.name;
+        const danoName = e0.name;
         const danoEntries = d.supervivencia.danoRecibido.filter((x) => x.nombre === danoName);
         expect(danoEntries).toHaveLength(1);
-        expect(danoEntries[0].total).toBe(firstEntry.total * 2);
+        expect(danoEntries[0].total).toBe(350);
+        expect(danoEntries[0].guid).toBe(2);
+        expect(danoEntries[0].origen).toBe('B');
+      }
+    }
+  });
+
+  it('en rendimiento: dos entradas del mismo nombre con uses distintos suman casts', () => {
+    const raw = { ...RAW.rokka };
+    if (raw.detalle.danoHecho?.data.entries) {
+      const e0 = raw.detalle.danoHecho.data.entries[0];
+      if (e0) {
+        raw.detalle.danoHecho.data.entries = [
+          { ...e0, guid: 1000, total: 1000, uses: 3 },
+          { ...e0, guid: 1001, total: 4000, uses: 5 },
+          ...raw.detalle.danoHecho.data.entries.slice(1),
+        ];
+        const d = normalizar(raw, SPECS.elemental);
+        const hechizo = d.rendimiento.hechizos.find((h) => h.nombre === e0.name);
+        expect(hechizo?.casteos).toBe(8);
+        expect(hechizo?.dano).toBe(5000);
+        expect(hechizo?.guid).toBe(1001); // guid of the 4000 entry
       }
     }
   });

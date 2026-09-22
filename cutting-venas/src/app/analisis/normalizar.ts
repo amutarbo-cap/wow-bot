@@ -151,33 +151,26 @@ function normalizarBuild(
   };
 }
 
-function agruparPorNombre<T extends { name: string; total: number; guid: number; abilityIcon?: string | null }>(
-  entradas: T[],
-  casteosPorGuid: Map<number, number>,
-  casteosPorNombre: Map<string, number>,
-): Array<T & { _merged: true }> {
-  const porNombre = new Map<string, { entrada: T; totalDano: number; usosContados: Set<string> }>();
-  const nombresVistos = new Set<string>();
+interface Grupo<T> {
+  principal: T;
+  total: number;
+  miembros: T[];
+}
 
+/** Une las entradas de una tabla de WCL que comparten nombre (el mismo hechizo con varios IDs): suma el total y conserva como principal la de mayor total. */
+function agruparPorNombre<T extends { name: string; total: number }>(entradas: T[]): Grupo<T>[] {
+  const grupos = new Map<string, Grupo<T>>();
   for (const e of entradas) {
-    if (!porNombre.has(e.name)) {
-      porNombre.set(e.name, { entrada: e, totalDano: e.total, usosContados: new Set() });
-      nombresVistos.add(e.name);
-    } else {
-      const agrupado = porNombre.get(e.name)!;
-      agrupado.totalDano += e.total;
-      // Keep entry with largest total
-      if (e.total > agrupado.entrada.total) {
-        agrupado.entrada = e;
-      }
+    const g = grupos.get(e.name);
+    if (!g) {
+      grupos.set(e.name, { principal: e, total: e.total, miembros: [e] });
+      continue;
     }
+    g.total += e.total;
+    g.miembros.push(e);
+    if (e.total > g.principal.total) g.principal = e;
   }
-
-  return Array.from(porNombre.values()).map(({ entrada, totalDano, usosContados }) => ({
-    ...entrada,
-    total: totalDano,
-    _merged: true as const,
-  }));
+  return [...grupos.values()];
 }
 
 function normalizarRendimiento(detalle: WclDetalle, minutos: number, duracionMs: number): Rendimiento {
@@ -187,36 +180,34 @@ function normalizarRendimiento(detalle: WclDetalle, minutos: number, duracionMs:
   const casteosPorNombre = new Map(casteos.map((c) => [c.name, c.total]));
 
   // Merge entries with the same name
-  const entradasMerged = agruparPorNombre(entradas, casteosPorGuid, casteosPorNombre);
-  const danoTotal = entradasMerged.reduce((a, e) => a + e.total, 0);
+  const grupos = agruparPorNombre(entradas);
+  const danoTotal = grupos.reduce((a, g) => a + g.total, 0);
 
   // Track which names have had their casteosPorNombre usage counted
   const nombresProcesados = new Set<string>();
 
-  const hechizos: Hechizo[] = entradasMerged
-    .map((e) => {
-      // Use e.uses (from merged total), or guid-based count, or name-based count (only once per name)
-      let n: number;
-      if (e.uses) {
-        n = e.uses;
-      } else if (casteosPorGuid.has(e.guid)) {
-        n = casteosPorGuid.get(e.guid)!;
-      } else if (!nombresProcesados.has(e.name) && casteosPorNombre.has(e.name)) {
-        n = casteosPorNombre.get(e.name)!;
-        nombresProcesados.add(e.name);
-      } else {
-        n = 0;
+  const hechizos: Hechizo[] = grupos
+    .map((grupo) => {
+      // Sum casts across all members: use e.uses if present, fall back to guid, then name (once)
+      let n = 0;
+      for (const m of grupo.miembros) {
+        n += m.uses ?? casteosPorGuid.get(m.guid) ?? 0;
+      }
+      // If no casts found via guid, try name once
+      if (n === 0 && !nombresProcesados.has(grupo.principal.name)) {
+        n = casteosPorNombre.get(grupo.principal.name) ?? 0;
+        nombresProcesados.add(grupo.principal.name);
       }
 
       return {
-        guid: e.guid,
-        nombre: e.name,
-        icono: e.abilityIcon ?? null,
-        dano: e.total,
-        porcentaje: danoTotal > 0 ? (e.total / danoTotal) * 100 : 0,
+        guid: grupo.principal.guid,
+        nombre: grupo.principal.name,
+        icono: grupo.principal.abilityIcon ?? null,
+        dano: grupo.total,
+        porcentaje: danoTotal > 0 ? (grupo.total / danoTotal) * 100 : 0,
         casteos: n,
         cpm: minutos > 0 ? n / minutos : 0,
-        danoPorCasteo: n > 0 ? e.total / n : 0,
+        danoPorCasteo: n > 0 ? grupo.total / n : 0,
       };
     })
     .sort((a, b) => b.dano - a.dano);
@@ -235,28 +226,15 @@ function normalizarSupervivencia(raw: RawJugador, minutos: number, casteosPorNom
   const entradas = raw.detalle.danoRecibido?.data.entries ?? [];
 
   // Merge entries with the same name
-  const porNombre = new Map<string, { guid: number; nombre: string; origen: string; total: number }>();
-  for (const e of entradas) {
-    if (!porNombre.has(e.name)) {
-      porNombre.set(e.name, { guid: e.guid, nombre: e.name, origen: e.actorName ?? '', total: e.total });
-    } else {
-      const agrupado = porNombre.get(e.name)!;
-      agrupado.total += e.total;
-      // Keep guid and origen of entry with largest total
-      if (e.total > porNombre.get(e.name)!.total) {
-        agrupado.guid = e.guid;
-        agrupado.origen = e.actorName ?? '';
-      }
-    }
-  }
+  const grupos = agruparPorNombre(entradas);
 
-  const danoRecibido = Array.from(porNombre.values())
-    .map((d) => ({
-      guid: d.guid,
-      nombre: d.nombre,
-      origen: d.origen,
-      total: d.total,
-      porMinuto: minutos > 0 ? d.total / minutos : 0,
+  const danoRecibido = grupos
+    .map((grupo) => ({
+      guid: grupo.principal.guid,
+      nombre: grupo.principal.name,
+      origen: grupo.principal.actorName ?? '',
+      total: grupo.total,
+      porMinuto: minutos > 0 ? grupo.total / minutos : 0,
     }))
     .sort((a, b) => b.total - a.total);
 
