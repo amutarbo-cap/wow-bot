@@ -2,7 +2,14 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, afterNextRender, input } from '@angular/core';
 import { Comparison } from '../analisis/comparison';
 import { Pieza } from '../modelo/player-fight-data';
-import { datosWowhead, enlaceHechizo, enlaceItem, iconoWcl, iconoZam, refrescarWowhead } from '../ui/enlaces';
+import {
+  datosWowhead,
+  enlaceHechizo,
+  enlaceItem,
+  iconoWcl,
+  iconoZam,
+  refrescarWowhead,
+} from '../ui/enlaces';
 import { num } from '../util/formato';
 
 @Component({
@@ -10,9 +17,16 @@ import { num } from '../util/formato';
   template: `
     @let c = this.c();
     @let t = c.talentos;
+    @if (!c.mio.disponible.build) {
+      <p class="cv-aviso">No hay datos de Build para tu combate</p>
+    }
+    @if (!c.suyo.disponible.build) {
+      <p class="cv-aviso">No hay datos de Build para el combate a analizar</p>
+    }
     <h3 data-ref="talentos" [class.cv-resaltada]="resaltada() === 'talentos'">Talentos</h3>
     <p>
-      Héroe: tú <strong>{{ t.heroeMio ?? '—' }}</strong> · él <strong>{{ t.heroeSuyo ?? '—' }}</strong>
+      Héroe: tú <strong>{{ t.heroeMio ?? '—' }}</strong> · él
+      <strong>{{ t.heroeSuyo ?? '—' }}</strong>
     </p>
     <div class="cv-grid-2">
       <div>
@@ -58,11 +72,17 @@ import { num } from '../util/formato';
     </details>
 
     <h3 data-ref="equipo" [class.cv-resaltada]="resaltada() === 'equipo'">
-      Equipo · ilvl medio {{ num(c.mio.build.ilvlMedio, 1) }} frente a {{ num(c.suyo.build.ilvlMedio, 1) }}
+      Equipo · ilvl medio {{ num(c.mio.build.ilvlMedio, 1) }} frente a
+      {{ num(c.suyo.build.ilvlMedio, 1) }}
     </h3>
     <table class="cv-tabla">
       <thead>
-        <tr><th>Ranura</th><th>Tú</th><th>Él</th><th class="cv-num">Dif. ilvl</th></tr>
+        <tr>
+          <th>Ranura</th>
+          <th>Tú</th>
+          <th>Él</th>
+          <th class="cv-num">Dif. ilvl</th>
+        </tr>
       </thead>
       <tbody>
         @for (f of c.equipo; track f.ref) {
@@ -88,13 +108,20 @@ import { num } from '../util/formato';
                 —
               }
             </td>
-            <td class="cv-num" [class.cv-peor]="f.difIlvl < 0" [class.cv-mejor]="f.difIlvl > 0">{{ f.difIlvl }}</td>
+            <td class="cv-num" [class.cv-peor]="f.difIlvl < 0" [class.cv-mejor]="f.difIlvl > 0">
+              {{ f.difIlvl }}
+            </td>
           </tr>
         }
       </tbody>
     </table>
     <ng-template #pieza let-p>
-      <a [href]="enlaceItem(p)" [attr.data-wowhead]="datosWowhead(p)" target="_blank" rel="noopener">
+      <a
+        [href]="enlaceItem(p)"
+        [attr.data-wowhead]="datosWowhead(p)"
+        target="_blank"
+        rel="noopener"
+      >
         <img class="cv-icono" [src]="iconoWcl(p.icono)" alt="" />
         {{ p.ilvl }}
       </a>
@@ -105,7 +132,12 @@ import { num } from '../util/formato';
         <h3>Estadísticas</h3>
         <table class="cv-tabla">
           <thead>
-            <tr><th>Estadística</th><th class="cv-num">Tú</th><th class="cv-num">Él</th><th class="cv-num">Dif.</th></tr>
+            <tr>
+              <th>Estadística</th>
+              <th class="cv-num">Tú</th>
+              <th class="cv-num">Él</th>
+              <th class="cv-num">Dif.</th>
+            </tr>
           </thead>
           <tbody>
             @for (s of c.stats; track s.nombre) {
@@ -113,7 +145,9 @@ import { num } from '../util/formato';
                 <td>{{ s.nombre }}</td>
                 <td class="cv-num">{{ num(s.mio) }}</td>
                 <td class="cv-num">{{ num(s.suyo) }}</td>
-                <td class="cv-num" [class.cv-peor]="s.dif < 0" [class.cv-mejor]="s.dif > 0">{{ num(s.dif) }}</td>
+                <td class="cv-num" [class.cv-peor]="s.dif < 0" [class.cv-mejor]="s.dif > 0">
+                  {{ num(s.dif) }}
+                </td>
               </tr>
             }
           </tbody>
@@ -123,7 +157,11 @@ import { num } from '../util/formato';
         <h3>Consumibles</h3>
         <table class="cv-tabla">
           <thead>
-            <tr><th>Tipo</th><th>Tú</th><th>Él</th></tr>
+            <tr>
+              <th>Tipo</th>
+              <th>Tú</th>
+              <th>Él</th>
+            </tr>
           </thead>
           <tbody>
             @for (f of c.consumibles; track f.ref) {

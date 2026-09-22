@@ -33,7 +33,11 @@ import { WclFight, WclJugadorDetalle } from '../wcl/wcl-tipos';
       @if (peleas().length) {
         <label class="cv-campo">
           <span>Pelea</span>
-          <select class="cv-select" [value]="fightId() ?? ''" (change)="elegirPelea(+$any($event.target).value)">
+          <select
+            class="cv-select"
+            [value]="fightId() ?? ''"
+            (change)="elegirPelea(+$any($event.target).value)"
+          >
             <option value="" disabled>Elige una pelea</option>
             @for (f of peleas(); track f.id) {
               <option [value]="f.id">{{ etiquetaPelea(f) }}</option>
@@ -45,7 +49,11 @@ import { WclFight, WclJugadorDetalle } from '../wcl/wcl-tipos';
       @if (jugadores().length) {
         <label class="cv-campo">
           <span>Jugador</span>
-          <select class="cv-select" [value]="sourceId() ?? ''" (change)="elegirJugador(+$any($event.target).value)">
+          <select
+            class="cv-select"
+            [value]="sourceId() ?? ''"
+            (change)="elegirJugador(+$any($event.target).value)"
+          >
             <option value="" disabled>Elige un jugador</option>
             @for (j of jugadores(); track j.id) {
               <option [value]="j.id">{{ j.name }} · {{ j.specs[0]?.spec }} {{ j.type }}</option>
@@ -61,6 +69,8 @@ export class SelectorCombate {
   readonly seleccion = output<SeleccionCombate | null>();
 
   private readonly wcl = inject(WclReportService);
+  /** Se incrementa en cada petición para descartar respuestas de una petición anterior ya superada. */
+  private peticion = 0;
   protected readonly url = signal('');
   protected readonly cargando = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -76,6 +86,7 @@ export class SelectorCombate {
   }
 
   async alCambiarUrl(texto: string): Promise<void> {
+    const miPeticion = ++this.peticion;
     this.url.set(texto);
     this.error.set(null);
     this.peleas.set([]);
@@ -93,31 +104,42 @@ export class SelectorCombate {
     this.cargando.set(true);
     try {
       const resumen = await this.wcl.resumen(ref.reportCode);
+      if (this.peticion !== miPeticion) return; // una petición más reciente ya ha tomado el relevo
       this.peleas.set(resumen.fights);
       if (ref.fightId !== null && resumen.fights.some((f) => f.id === ref.fightId)) {
-        await this.elegirPelea(ref.fightId, ref.sourceId);
+        await this.elegirPeleaComo(ref.fightId, ref.sourceId, miPeticion);
       }
     } catch (e) {
-      this.error.set(mensajeDeError(e));
+      if (this.peticion === miPeticion) this.error.set(mensajeDeError(e));
     } finally {
-      this.cargando.set(false);
+      if (this.peticion === miPeticion) this.cargando.set(false);
     }
   }
 
   async elegirPelea(id: number, sourceInicial: number | null = null): Promise<void> {
+    await this.elegirPeleaComo(id, sourceInicial, ++this.peticion);
+  }
+
+  /** Lógica común de elegirPelea; recibe la petición del llamador para no generar una nueva al encadenarse desde alCambiarUrl. */
+  private async elegirPeleaComo(
+    id: number,
+    sourceInicial: number | null,
+    miPeticion: number,
+  ): Promise<void> {
     this.fightId.set(id);
     this.sourceId.set(null);
     this.jugadores.set([]);
     this.emitir();
     try {
       const jugadores = await this.wcl.jugadores(this.reportCode()!, id);
+      if (this.peticion !== miPeticion) return; // una petición más reciente ya ha tomado el relevo
       this.jugadores.set(jugadores.sort((a, b) => a.name.localeCompare(b.name)));
       if (sourceInicial !== null) {
         if (jugadores.some((j) => j.id === sourceInicial)) this.elegirJugador(sourceInicial);
         else this.error.set(new WclError('jugador-ausente').message);
       }
     } catch (e) {
-      this.error.set(mensajeDeError(e));
+      if (this.peticion === miPeticion) this.error.set(mensajeDeError(e));
     }
   }
 
@@ -130,6 +152,8 @@ export class SelectorCombate {
     const code = this.reportCode();
     const f = this.fightId();
     const s = this.sourceId();
-    this.seleccion.emit(code && f !== null && s !== null ? { reportCode: code, fightId: f, sourceId: s } : null);
+    this.seleccion.emit(
+      code && f !== null && s !== null ? { reportCode: code, fightId: f, sourceId: s } : null,
+    );
   }
 }

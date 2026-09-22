@@ -1,13 +1,13 @@
 import { Component, input, signal } from '@angular/core';
 import { Comparison, Hallazgo } from '../analisis/comparison';
-import { Bloque, PlayerFightData } from '../modelo/player-fight-data';
+import { Bloque, NOMBRES_BLOQUE, PlayerFightData } from '../modelo/player-fight-data';
 import { enlaceReporte } from '../ui/enlaces';
 import { compacto, nombreDificultad, reloj } from '../util/formato';
 import { PestanaBuild } from './pestana-build';
 import { PestanaRendimiento } from './pestana-rendimiento';
 import { PestanaRotacion } from './pestana-rotacion';
 import { PestanaSupervivencia } from './pestana-supervivencia';
-import { NOMBRES_BLOQUE, Veredicto } from './veredicto';
+import { Veredicto } from './veredicto';
 
 @Component({
   selector: 'cv-comparacion',
@@ -15,14 +15,23 @@ import { NOMBRES_BLOQUE, Veredicto } from './veredicto';
   template: `
     @let c = comparacion();
     <section class="cv-duelo">
-      @for (lado of [{ etiqueta: 'Tú', d: c.mio }, { etiqueta: 'Él', d: c.suyo }]; track lado.etiqueta) {
+      @for (
+        lado of [
+          { etiqueta: 'Tú', d: c.mio },
+          { etiqueta: 'Él', d: c.suyo },
+        ];
+        track lado.etiqueta
+      ) {
         <div class="cv-lado">
           <span class="cv-lado__etiqueta">{{ lado.etiqueta }}</span>
-          <a class="cv-lado__nombre" [href]="enlace(lado.d)" target="_blank" rel="noopener">{{ lado.d.meta.nombre }}</a>
+          <a class="cv-lado__nombre" [href]="enlace(lado.d)" target="_blank" rel="noopener">{{
+            lado.d.meta.nombre
+          }}</a>
           <span>{{ lado.d.meta.spec }} {{ lado.d.meta.clase }}</span>
           <strong class="cv-lado__dps">{{ compacto(lado.d.rendimiento.dps) }} DPS</strong>
           <span class="cv-lado__pelea">
-            {{ lado.d.meta.boss }} · {{ nombreDificultad(lado.d.meta.dificultad) }} · {{ lado.d.meta.kill ? 'kill' : 'wipe' }} ·
+            {{ lado.d.meta.boss }} · {{ nombreDificultad(lado.d.meta.dificultad) }} ·
+            {{ lado.d.meta.kill ? 'kill' : 'wipe' }} ·
             {{ reloj(lado.d.meta.duracionMs) }}
           </span>
         </div>
@@ -37,7 +46,13 @@ import { NOMBRES_BLOQUE, Veredicto } from './veredicto';
 
     <nav class="cv-pestanas" role="tablist">
       @for (b of bloques; track b) {
-        <button type="button" role="tab" class="cv-pestana" [attr.aria-selected]="pestana() === b" (click)="pestana.set(b)">
+        <button
+          type="button"
+          role="tab"
+          class="cv-pestana"
+          [attr.aria-selected]="pestana() === b"
+          (click)="pestana.set(b)"
+        >
           {{ nombres[b] }}
         </button>
       }

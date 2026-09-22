@@ -5,7 +5,15 @@ import { PlayerFightLoader } from './carga/player-fight-loader.service';
 import { ComparacionVista } from './comparacion/comparacion-vista';
 import { Entrada, ParSeleccion } from './entrada/entrada';
 import { WclAuthService } from './wcl/wcl-auth.service';
-import { MENSAJES_ERROR, WclError, mensajeDeError } from './wcl/wcl-errores';
+import { MENSAJES_ERROR, WclError, mensajeDeError, traducirErrorHttp } from './wcl/wcl-errores';
+
+/** Reconstruye el error con el mismo código (para `reintentable`) pero el mensaje prefijado con el lado que falló. */
+function conLado(e: unknown, lado: string): WclError {
+  const original = e instanceof WclError ? e : traducirErrorHttp(e);
+  const prefijado = new WclError(original.codigo);
+  prefijado.message = `${lado}: ${original.message}`;
+  return prefijado;
+}
 
 @Component({
   selector: 'app-root',
@@ -25,7 +33,9 @@ import { MENSAJES_ERROR, WclError, mensajeDeError } from './wcl/wcl-errores';
           </section>
         } @else if (comparacion(); as c) {
           <div class="cv-acciones">
-            <button class="cv-boton cv-boton--secundario" type="button" (click)="volver()">Nueva comparación</button>
+            <button class="cv-boton cv-boton--secundario" type="button" (click)="volver()">
+              Nueva comparación
+            </button>
           </div>
           <cv-comparacion [comparacion]="c" />
         } @else {
@@ -40,7 +50,9 @@ import { MENSAJES_ERROR, WclError, mensajeDeError } from './wcl/wcl-errores';
             <div class="cv-error">
               <p>{{ e }}</p>
               @if (reintentable()) {
-                <button class="cv-boton cv-boton--secundario" type="button" (click)="reintentar()">Reintentar</button>
+                <button class="cv-boton cv-boton--secundario" type="button" (click)="reintentar()">
+                  Reintentar
+                </button>
               }
             </div>
           }
@@ -68,8 +80,16 @@ export class App {
     this.error.set(null);
     try {
       const [mio, suyo] = await Promise.all([
-        this.loader.cargar(par.mio, (p) => this.progresoMio.set(p)),
-        this.loader.cargar(par.suyo, (p) => this.progresoSuyo.set(p)),
+        this.loader
+          .cargar(par.mio, (p) => this.progresoMio.set(p))
+          .catch((e) => {
+            throw conLado(e, 'Tu combate');
+          }),
+        this.loader
+          .cargar(par.suyo, (p) => this.progresoSuyo.set(p))
+          .catch((e) => {
+            throw conLado(e, 'Combate a analizar');
+          }),
       ]);
       this.comparacion.set(comparar(mio, suyo));
     } catch (e) {

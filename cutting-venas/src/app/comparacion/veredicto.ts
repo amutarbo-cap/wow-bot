@@ -1,13 +1,6 @@
 import { Component, computed, input, output, signal } from '@angular/core';
 import { Hallazgo } from '../analisis/comparison';
-import { Bloque } from '../modelo/player-fight-data';
-
-export const NOMBRES_BLOQUE: Record<Bloque, string> = {
-  build: 'Build',
-  rendimiento: 'Rendimiento',
-  rotacion: 'Rotación',
-  supervivencia: 'Supervivencia',
-};
+import { NOMBRES_BLOQUE } from '../modelo/player-fight-data';
 
 const VISIBLES = 8;
 
@@ -45,5 +38,7 @@ export class Veredicto {
   protected readonly nombres = NOMBRES_BLOQUE;
   protected readonly limite = VISIBLES;
   protected readonly todos = signal(false);
-  protected readonly visibles = computed(() => (this.todos() ? this.hallazgos() : this.hallazgos().slice(0, VISIBLES)));
+  protected readonly visibles = computed(() =>
+    this.todos() ? this.hallazgos() : this.hallazgos().slice(0, VISIBLES),
+  );
 }

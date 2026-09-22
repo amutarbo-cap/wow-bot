@@ -6,10 +6,25 @@ import { compacto, num, reloj } from '../util/formato';
   selector: 'cv-pestana-supervivencia',
   template: `
     @let c = this.c();
+    @if (!c.mio.disponible.supervivencia) {
+      <p class="cv-aviso">No hay datos de Supervivencia para tu combate</p>
+    }
+    @if (!c.suyo.disponible.supervivencia) {
+      <p class="cv-aviso">No hay datos de Supervivencia para el combate a analizar</p>
+    }
     <div class="cv-grid-2">
-      @for (lado of [{ etiqueta: 'Tú', d: c.mio }, { etiqueta: 'Él', d: c.suyo }]; track lado.etiqueta) {
+      @for (
+        lado of [
+          { etiqueta: 'Tú', d: c.mio },
+          { etiqueta: 'Él', d: c.suyo },
+        ];
+        track lado.etiqueta
+      ) {
         <div>
-          <h3 [attr.data-ref]="lado.etiqueta === 'Tú' ? 'muertes' : null" [class.cv-resaltada]="lado.etiqueta === 'Tú' && resaltada() === 'muertes'">
+          <h3
+            [attr.data-ref]="lado.etiqueta === 'Tú' ? 'muertes' : null"
+            [class.cv-resaltada]="lado.etiqueta === 'Tú' && resaltada() === 'muertes'"
+          >
             {{ lado.etiqueta }}: {{ lado.d.supervivencia.muertes.length }} muertes
           </h3>
           <ul>
@@ -25,7 +40,10 @@ import { compacto, num, reloj } from '../util/formato';
               ninguno
             }
           </p>
-          <p>Pociones de vida: {{ lado.d.supervivencia.pocionesVida }} · Piedras de salud: {{ lado.d.supervivencia.piedrasVida }}</p>
+          <p>
+            Pociones de vida: {{ lado.d.supervivencia.pocionesVida }} · Piedras de salud:
+            {{ lado.d.supervivencia.piedrasVida }}
+          </p>
         </div>
       }
     </div>
@@ -33,7 +51,13 @@ import { compacto, num, reloj } from '../util/formato';
     <h3>Daño recibido por habilidad (por minuto)</h3>
     <table class="cv-tabla">
       <thead>
-        <tr><th>Habilidad</th><th>Origen</th><th class="cv-num">Tú</th><th class="cv-num">Él</th><th class="cv-num">Ratio</th></tr>
+        <tr>
+          <th>Habilidad</th>
+          <th>Origen</th>
+          <th class="cv-num">Tú</th>
+          <th class="cv-num">Él</th>
+          <th class="cv-num">Ratio</th>
+        </tr>
       </thead>
       <tbody>
         @for (f of c.danoRecibido; track f.ref) {
@@ -42,7 +66,10 @@ import { compacto, num, reloj } from '../util/formato';
             <td>{{ f.origen }}</td>
             <td class="cv-num">{{ compacto(f.mioPorMinuto) }}</td>
             <td class="cv-num">{{ compacto(f.suyoPorMinuto) }}</td>
-            <td class="cv-num" [class.cv-peor]="f.ratio === null ? f.mioPorMinuto > 0 : f.ratio >= 1.5">
+            <td
+              class="cv-num"
+              [class.cv-peor]="f.ratio === null ? f.mioPorMinuto > 0 : f.ratio >= 1.5"
+            >
               {{ f.ratio === null ? '—' : num(f.ratio, 1) + '×' }}
             </td>
           </tr>

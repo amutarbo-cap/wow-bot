@@ -7,8 +7,15 @@ import { compacto, num, pctSigno } from '../util/formato';
   selector: 'cv-pestana-rendimiento',
   template: `
     @let c = this.c();
+    @if (!c.mio.disponible.rendimiento) {
+      <p class="cv-aviso">No hay datos de Rendimiento para tu combate</p>
+    }
+    @if (!c.suyo.disponible.rendimiento) {
+      <p class="cv-aviso">No hay datos de Rendimiento para el combate a analizar</p>
+    }
     <p>
-      DPS: tú <strong>{{ compacto(c.mio.rendimiento.dps) }}</strong> · él <strong>{{ compacto(c.suyo.rendimiento.dps) }}</strong>
+      DPS: tú <strong>{{ compacto(c.mio.rendimiento.dps) }}</strong> · él
+      <strong>{{ compacto(c.suyo.rendimiento.dps) }}</strong>
     </p>
     <table class="cv-tabla">
       <thead>
@@ -32,15 +39,25 @@ import { compacto, num, pctSigno } from '../util/formato';
               }
               {{ f.nombre }}
             </td>
-            <td class="cv-num" [class.cv-peor]="f.difPorcentaje <= -5">{{ f.mio ? num(f.mio.porcentaje, 1) : '—' }}</td>
+            <td class="cv-num" [class.cv-peor]="f.difPorcentaje <= -5">
+              {{ f.mio ? num(f.mio.porcentaje, 1) : '—' }}
+            </td>
             <td class="cv-num">{{ f.suyo ? num(f.suyo.porcentaje, 1) : '—' }}</td>
             <td class="cv-num">{{ f.mio?.casteos ? num(f.mio!.cpm, 1) : '—' }}</td>
             <td class="cv-num">{{ f.suyo?.casteos ? num(f.suyo!.cpm, 1) : '—' }}</td>
-            <td class="cv-num" [class.cv-peor]="(f.difCpmPct ?? 0) <= -15" [class.cv-mejor]="(f.difCpmPct ?? 0) >= 15">
+            <td
+              class="cv-num"
+              [class.cv-peor]="(f.difCpmPct ?? 0) <= -15"
+              [class.cv-mejor]="(f.difCpmPct ?? 0) >= 15"
+            >
               {{ f.difCpmPct === null ? '—' : pctSigno(f.difCpmPct) }}
             </td>
-            <td class="cv-num">{{ f.mio?.danoPorCasteo ? compacto(f.mio!.danoPorCasteo) : '—' }}</td>
-            <td class="cv-num">{{ f.suyo?.danoPorCasteo ? compacto(f.suyo!.danoPorCasteo) : '—' }}</td>
+            <td class="cv-num">
+              {{ f.mio?.danoPorCasteo ? compacto(f.mio!.danoPorCasteo) : '—' }}
+            </td>
+            <td class="cv-num">
+              {{ f.suyo?.danoPorCasteo ? compacto(f.suyo!.danoPorCasteo) : '—' }}
+            </td>
           </tr>
         }
       </tbody>
