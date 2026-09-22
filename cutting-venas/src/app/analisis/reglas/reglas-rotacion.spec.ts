@@ -28,6 +28,11 @@ describe('reglaUsosCooldown', () => {
   it('no salta si usas los mismos', () => {
     expect(reglaUsosCooldown(conCd(usos('Combustion', 0, 120000)), conCd(usos('Combustion', 0, 120000)))).toEqual([]);
   });
+
+  it('devuelve [] si la duración de la pelea es 0', () => {
+    expect(reglaUsosCooldown(conCd(usos('Combustion', 0), 0), conCd(usos('Combustion', 0, 120000)))).toEqual([]);
+    expect(reglaUsosCooldown(conCd(usos('Combustion', 0)), conCd(usos('Combustion', 0, 120000), 0))).toEqual([]);
+  });
 });
 
 describe('reglaPrimerCooldown', () => {

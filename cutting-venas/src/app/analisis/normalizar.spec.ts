@@ -1,4 +1,4 @@
-import { brujo, RAW, rokka, SPECS } from '../../testing/fabrica';
+import { brujo, diamades, RAW, rokka, SPECS } from '../../testing/fabrica';
 import { normalizar, resolverTalentos } from './normalizar';
 
 describe('normalizar (fixture real: chamán elemental)', () => {
@@ -88,5 +88,31 @@ describe('normalizar con datos parciales', () => {
     const { talentos, heroe } = resolverTalentos([{ id: 5, rank: 1, nodeID: 9 }], null);
     expect(talentos[0].nombre).toBe('Talento #5');
     expect(heroe).toBeNull();
+  });
+});
+
+describe('normalizar agrupa entradas con el mismo nombre', () => {
+  it('en rendimiento: Diamades tiene exactamente un Earthquake con el dano total', () => {
+    const d = diamades();
+    const earthquakes = d.rendimiento.hechizos.filter((h) => h.nombre === 'Earthquake');
+    expect(earthquakes).toHaveLength(1);
+    expect(earthquakes[0].dano).toBe(185972);
+  });
+
+  it('en supervivencia: fusion de dano recibido con el mismo nombre suma totales', () => {
+    const raw = { ...RAW.rokka };
+    if (raw.detalle.danoRecibido?.data.entries) {
+      const firstEntry = raw.detalle.danoRecibido.data.entries[0];
+      if (firstEntry) {
+        // Create a copy with different guid
+        const duplicate = { ...firstEntry, guid: 99999 };
+        raw.detalle.danoRecibido.data.entries = [firstEntry, duplicate, ...raw.detalle.danoRecibido.data.entries.slice(1)];
+        const d = normalizar(raw, SPECS.elemental);
+        const danoName = firstEntry.name;
+        const danoEntries = d.supervivencia.danoRecibido.filter((x) => x.nombre === danoName);
+        expect(danoEntries).toHaveLength(1);
+        expect(danoEntries[0].total).toBe(firstEntry.total * 2);
+      }
+    }
   });
 });

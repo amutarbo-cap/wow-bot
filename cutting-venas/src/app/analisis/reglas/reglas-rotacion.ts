@@ -8,6 +8,7 @@ import { PESOS, dpsBase, hallazgo } from './impacto';
 export const reglaUsosCooldown: Regla = (mio, suyo) => {
   const minM = mio.meta.duracionMs / 60000;
   const minS = suyo.meta.duracionMs / 60000;
+  if (minM <= 0 || minS <= 0) return [];
   const mismaDuracion = Math.abs(minM - minS) / Math.max(minM, minS) <= 0.1;
   const res: Hallazgo[] = [];
   for (const f of filasCooldowns(mio, suyo)) {
