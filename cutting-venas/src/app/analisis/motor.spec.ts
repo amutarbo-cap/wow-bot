@@ -13,7 +13,11 @@ describe('comparar', () => {
     const c = comparar(rokka(), diamades());
     expect(c.avisos).toEqual([]);
     expect(c.hallazgos.length).toBeGreaterThan(10);
-    expect(c.hallazgos[0]).toMatchObject({ bloque: 'supervivencia', severidad: 'alta', refFila: 'muertes' });
+    expect(c.hallazgos[0]).toMatchObject({
+      bloque: 'supervivencia',
+      severidad: 'alta',
+      refFila: 'muertes',
+    });
     const impactos = c.hallazgos.map((h) => h.impacto);
     expect(impactos).toEqual([...impactos].sort((a, b) => b - a));
     expect(c.hallazgos.some((h) => h.id === 'downtime')).toBe(true);
@@ -34,15 +38,23 @@ describe('comparar', () => {
 
   it('avisa si la spec o el boss son distintos, sin bloquear', () => {
     const c = comparar(rokka(), brujo());
-    expect(c.avisos).toEqual(['Comparas especializaciones distintas (Elemental Shaman y Affliction Warlock)']);
-    const otroBoss = comparar(crearJugador(), crearJugador({ meta: { encounterId: 2, boss: 'Otro' } }));
+    expect(c.avisos).toEqual([
+      'Comparas especializaciones distintas (Elemental Shaman y Affliction Warlock)',
+    ]);
+    const otroBoss = comparar(
+      crearJugador(),
+      crearJugador({ meta: { encounterId: 2, boss: 'Otro' } }),
+    );
     expect(otroBoss.avisos).toEqual(['Las peleas son de bosses distintos (Boss y Otro)']);
   });
 
   it('omite los hallazgos de un bloque no disponible y lo avisa', () => {
-    const sinSuperv = { ...rokka(), disponible: { build: true, rendimiento: true, rotacion: true, supervivencia: false } };
+    const sinSuperv = {
+      ...rokka(),
+      disponible: { build: true, rendimiento: true, rotacion: true, supervivencia: false },
+    };
     const c = comparar(sinSuperv, diamades());
     expect(c.hallazgos.some((h) => h.bloque === 'supervivencia')).toBe(false);
-    expect(c.avisos).toContain('Datos de supervivencia no disponibles: se omiten sus hallazgos');
+    expect(c.avisos).toContain('Datos de Supervivencia no disponibles: se omiten sus hallazgos');
   });
 });

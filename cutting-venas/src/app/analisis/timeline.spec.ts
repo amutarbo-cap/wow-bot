@@ -14,7 +14,11 @@ const nombres = new Map([
 
 describe('construirCasteos', () => {
   it('empareja begincast con cast y no duplica', () => {
-    const casteos = construirCasteos([ev(1000, 'begincast', 1), ev(3000, 'cast', 1), ev(3500, 'cast', 2)], 1000, nombres);
+    const casteos = construirCasteos(
+      [ev(1000, 'begincast', 1), ev(3000, 'cast', 1), ev(3500, 'cast', 2)],
+      1000,
+      nombres,
+    );
     expect(casteos).toEqual([
       { inicio: 0, fin: 2000, guid: 1, nombre: 'Fireball' },
       { inicio: 2500, fin: 2500, guid: 2, nombre: 'Combustion' },
@@ -35,11 +39,11 @@ describe('detectarHuecos', () => {
   const c = (inicio: number, fin: number) => ({ inicio, fin, guid: 1, nombre: 'Fireball' });
 
   it('el tiempo de casteo no cuenta como hueco', () => {
-    expect(detectarHuecos([c(0, 2500), c(2600, 5000)], 5000)).toEqual([]);
+    expect(detectarHuecos([c(0, 2500), c(2600, 5000)], 5000, [])).toEqual([]);
   });
 
   it('detecta huecos de más de 1,5 s, incluido el tramo final', () => {
-    const huecos = detectarHuecos([c(0, 1000), c(4000, 4000)], 10000);
+    const huecos = detectarHuecos([c(0, 1000), c(4000, 4000)], 10000, []);
     expect(huecos).toEqual([
       { desde: 1000, hasta: 4000, duracion: 3000, tras: 'Fireball' },
       { desde: 4000, hasta: 10000, duracion: 6000, tras: 'Fireball' },
@@ -47,7 +51,24 @@ describe('detectarHuecos', () => {
   });
 
   it('un hueco de exactamente 1,5 s no cuenta', () => {
-    expect(detectarHuecos([c(0, 1000), c(2500, 2500)], 2500)).toEqual([]);
+    expect(detectarHuecos([c(0, 1000), c(2500, 2500)], 2500, [])).toEqual([]);
+  });
+
+  it('un hueco que contiene una muerte se omite (el jugador estaba muerto, no parado)', () => {
+    const huecos = detectarHuecos([c(0, 1000), c(4000, 4000)], 10000, [2000]);
+    expect(huecos).toEqual([{ desde: 4000, hasta: 10000, duracion: 6000, tras: 'Fireball' }]);
+  });
+
+  it('el tramo final tras la última muerte se omite', () => {
+    expect(detectarHuecos([c(0, 1000)], 10000, [5000])).toEqual([]);
+  });
+
+  it('un hueco normal, sin muertes dentro, se sigue contando', () => {
+    const huecos = detectarHuecos([c(0, 1000), c(4000, 4000)], 10000, [500]);
+    expect(huecos).toEqual([
+      { desde: 1000, hasta: 4000, duracion: 3000, tras: 'Fireball' },
+      { desde: 4000, hasta: 10000, duracion: 6000, tras: 'Fireball' },
+    ]);
   });
 });
 
@@ -58,7 +79,9 @@ describe('detectarCooldowns', () => {
       ['Fireball', 120],
       ['Scorch', 2],
     ]);
-    expect(detectarCooldowns(casteos, new Set(['Combustion', 'Fireball']), 300000)).toEqual(['Combustion']);
+    expect(detectarCooldowns(casteos, new Set(['Combustion', 'Fireball']), 300000)).toEqual([
+      'Combustion',
+    ]);
   });
 
   it('excluye utilidad, defensivos y pociones', () => {

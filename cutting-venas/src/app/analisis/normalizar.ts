@@ -27,11 +27,15 @@ export function normalizar(raw: RawJugador, spec: SpecTalentos | null): PlayerFi
   const minutos = duracionMs / 60000;
   const ci = detalle.combatantInfo?.data[0] ?? null;
   const nombres = new Map(detalle.masterData.abilities.map((a) => [a.gameID, a.name]));
-  const casteosPorNombre = new Map((detalle.casteos?.data.entries ?? []).map((e) => [e.name, e.total]));
+  const casteosPorNombre = new Map<string, number>();
+  for (const e of detalle.casteos?.data.entries ?? []) {
+    casteosPorNombre.set(e.name, (casteosPorNombre.get(e.name) ?? 0) + e.total);
+  }
   const buffsPropios = new Set((detalle.buffs?.data.auras ?? []).map((a) => a.name));
 
+  const muertes = (detalle.muertes?.data.entries ?? []).map((m) => m.timestamp - fight.startTime);
   const casteos = construirCasteos(raw.eventos, fight.startTime, nombres);
-  const huecos = detectarHuecos(casteos, duracionMs);
+  const huecos = detectarHuecos(casteos, duracionMs, muertes);
   const downtimeMs = huecos.reduce((acc, h) => acc + h.duracion, 0);
   const timeline: Timeline = {
     casteos,
@@ -63,7 +67,7 @@ export function normalizar(raw: RawJugador, spec: SpecTalentos | null): PlayerFi
       supervivencia: !!detalle.danoRecibido && !!detalle.muertes,
     },
     build: normalizarBuild(ci, spec, detalle, casteosPorNombre),
-    rendimiento: normalizarRendimiento(detalle, minutos, duracionMs),
+    rendimiento: normalizarRendimiento(detalle, minutos, duracionMs, casteosPorNombre),
     timeline,
     auras: normalizarAuras(detalle, duracionMs),
     supervivencia: normalizarSupervivencia(raw, minutos, casteosPorNombre),
@@ -74,9 +78,14 @@ export function resolverTalentos(
   arbol: WclCombatantInfo['talentTree'],
   spec: SpecTalentos | null,
 ): { talentos: Talento[]; heroe: string | null } {
-  const porEntrada = new Map<number, { nodo: RbNodo; entrada: RbEntrada; arbol: Talento['arbol'] }>();
+  const porEntrada = new Map<
+    number,
+    { nodo: RbNodo; entrada: RbEntrada; arbol: Talento['arbol'] }
+  >();
   const indexar = (nodos: RbNodo[], tipo: Talento['arbol']) => {
-    for (const nodo of nodos) for (const entrada of nodo.entries) porEntrada.set(entrada.id, { nodo, entrada, arbol: tipo });
+    for (const nodo of nodos)
+      for (const entrada of nodo.entries)
+        porEntrada.set(entrada.id, { nodo, entrada, arbol: tipo });
   };
   if (spec) {
     indexar(spec.classNodes, 'clase');
@@ -84,7 +93,8 @@ export function resolverTalentos(
     indexar(spec.heroNodes, 'heroe');
   }
   const subarboles = new Map<number, string>();
-  for (const nodo of spec?.subTreeNodes ?? []) for (const e of nodo.entries) subarboles.set(e.id, e.name ?? nodo.name);
+  for (const nodo of spec?.subTreeNodes ?? [])
+    for (const e of nodo.entries) subarboles.set(e.id, e.name ?? nodo.name);
 
   let heroe: string | null = null;
   const talentos: Talento[] = [];
@@ -114,7 +124,9 @@ function normalizarBuild(
   detalle: WclDetalle,
   casteosPorNombre: Map<string, number>,
 ): Build {
-  const { talentos, heroe } = ci ? resolverTalentos(ci.talentTree, spec) : { talentos: [], heroe: null };
+  const { talentos, heroe } = ci
+    ? resolverTalentos(ci.talentTree, spec)
+    : { talentos: [], heroe: null };
   const equipo = (ci?.gear ?? [])
     .map((g, ranura) => ({
       ranura,
@@ -173,30 +185,30 @@ function agruparPorNombre<T extends { name: string; total: number }>(entradas: T
   return [...grupos.values()];
 }
 
-function normalizarRendimiento(detalle: WclDetalle, minutos: number, duracionMs: number): Rendimiento {
+function normalizarRendimiento(
+  detalle: WclDetalle,
+  minutos: number,
+  duracionMs: number,
+  casteosPorNombre: Map<string, number>,
+): Rendimiento {
   const entradas = detalle.danoHecho?.data.entries ?? [];
   const casteos = detalle.casteos?.data.entries ?? [];
   const casteosPorGuid = new Map(casteos.map((c) => [c.guid, c.total]));
-  const casteosPorNombre = new Map(casteos.map((c) => [c.name, c.total]));
 
   // Merge entries with the same name
   const grupos = agruparPorNombre(entradas);
   const danoTotal = grupos.reduce((a, g) => a + g.total, 0);
 
-  // Track which names have had their casteosPorNombre usage counted
-  const nombresProcesados = new Set<string>();
-
   const hechizos: Hechizo[] = grupos
     .map((grupo) => {
-      // Sum casts across all members: use e.uses if present, fall back to guid, then name (once)
+      // Sum casts across all members: use e.uses if present, fall back to guid, then name
       let n = 0;
       for (const m of grupo.miembros) {
         n += m.uses ?? casteosPorGuid.get(m.guid) ?? 0;
       }
-      // If no casts found via guid, try name once
-      if (n === 0 && !nombresProcesados.has(grupo.principal.name)) {
+      // If no casts found via guid, try name
+      if (n === 0) {
         n = casteosPorNombre.get(grupo.principal.name) ?? 0;
-        nombresProcesados.add(grupo.principal.name);
       }
 
       return {
@@ -217,12 +229,26 @@ function normalizarRendimiento(detalle: WclDetalle, minutos: number, duracionMs:
 function normalizarAuras(detalle: WclDetalle, duracionMs: number): Aura[] {
   const pct = (uptime: number) => (duracionMs > 0 ? Math.min(100, (uptime / duracionMs) * 100) : 0);
   return [
-    ...(detalle.buffs?.data.auras ?? []).map((a) => ({ guid: a.guid, nombre: a.name, tipo: 'buff' as const, uptimePct: pct(a.totalUptime) })),
-    ...(detalle.debuffs?.data.auras ?? []).map((a) => ({ guid: a.guid, nombre: a.name, tipo: 'debuff' as const, uptimePct: pct(a.totalUptime) })),
+    ...(detalle.buffs?.data.auras ?? []).map((a) => ({
+      guid: a.guid,
+      nombre: a.name,
+      tipo: 'buff' as const,
+      uptimePct: pct(a.totalUptime),
+    })),
+    ...(detalle.debuffs?.data.auras ?? []).map((a) => ({
+      guid: a.guid,
+      nombre: a.name,
+      tipo: 'debuff' as const,
+      uptimePct: pct(a.totalUptime),
+    })),
   ];
 }
 
-function normalizarSupervivencia(raw: RawJugador, minutos: number, casteosPorNombre: Map<string, number>): Supervivencia {
+function normalizarSupervivencia(
+  raw: RawJugador,
+  minutos: number,
+  casteosPorNombre: Map<string, number>,
+): Supervivencia {
   const entradas = raw.detalle.danoRecibido?.data.entries ?? [];
 
   // Merge entries with the same name

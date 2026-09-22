@@ -7,9 +7,20 @@ export const reglaMuertes: Regla = (mio, suyo) => {
   const m = mio.supervivencia.muertes;
   const s = suyo.supervivencia.muertes;
   if (m.length <= s.length) return [];
+  const veces = (n: number) => (n === 1 ? '1 vez' : `${n} veces`);
   const detalle = m.map((x) => `${reloj(x.t)} por ${x.causa}`).join(', ');
-  const texto = `Mueres ${m.length === 1 ? '1 vez' : `${m.length} veces`} (${detalle}) y él ${s.length === 0 ? 'no muere' : `${s.length}`}`;
-  return [hallazgo(mio, 'supervivencia', 'muertes', texto, dpsBase(mio) * PESOS.muerte, 'muertes', 'alta')];
+  const texto = `Mueres ${veces(m.length)} (${detalle}) y él ${s.length === 0 ? 'no muere' : `muere ${veces(s.length)}`}`;
+  return [
+    hallazgo(
+      mio,
+      'supervivencia',
+      'muertes',
+      texto,
+      dpsBase(mio) * PESOS.muerte,
+      'muertes',
+      'alta',
+    ),
+  ];
 };
 
 export const reglaDanoRecibido: Regla = (mio, suyo) => {
@@ -24,7 +35,16 @@ export const reglaDanoRecibido: Regla = (mio, suyo) => {
       f.ratio === null
         ? `Recibes daño de ${f.nombre} y él no`
         : `Recibes ${num(f.ratio, 1)}× más daño de ${f.nombre}`;
-    res.push(hallazgo(mio, 'supervivencia', `dano:${f.nombre}`, texto, dpsBase(mio) * PESOS.danoRecibido * Math.min(ratio, 5), f.ref));
+    res.push(
+      hallazgo(
+        mio,
+        'supervivencia',
+        `dano:${f.nombre}`,
+        texto,
+        dpsBase(mio) * PESOS.danoRecibido * Math.min(ratio, 5),
+        f.ref,
+      ),
+    );
   }
   return res;
 };

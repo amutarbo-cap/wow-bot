@@ -1,5 +1,12 @@
 export type Bloque = 'build' | 'rendimiento' | 'rotacion' | 'supervivencia';
 
+export const NOMBRES_BLOQUE: Record<Bloque, string> = {
+  build: 'Build',
+  rendimiento: 'Rendimiento',
+  rotacion: 'Rotación',
+  supervivencia: 'Supervivencia',
+};
+
 export interface MetaPelea {
   reportCode: string;
   fightId: number;

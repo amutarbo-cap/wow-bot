@@ -50,6 +50,8 @@ export function filasEquipo(mio: PlayerFightData, suyo: PlayerFightData): FilaEq
   return unirPorClave(mio.build.equipo, suyo.build.equipo, (p) => String(p.ranura))
     .map(([k, m, s]) => {
       const ranura = Number(k);
+      // Ranura 16 (mano secundaria) vacía en mi build: uso arma a dos manos, no es un hueco de equipo.
+      const manoSecundariaVacia = ranura === 16 && !m;
       return {
         ref: `ranura:${ranura}`,
         ranura,
@@ -57,8 +59,10 @@ export function filasEquipo(mio: PlayerFightData, suyo: PlayerFightData): FilaEq
         mio: m,
         suyo: s,
         difIlvl: (m?.ilvl ?? 0) - (s?.ilvl ?? 0),
-        faltaEncantamiento: !!s?.encantamiento && !m?.encantamiento,
-        faltanGemas: Math.max(0, (s?.gemas.length ?? 0) - (m?.gemas.length ?? 0)),
+        faltaEncantamiento: !manoSecundariaVacia && !!s?.encantamiento && !m?.encantamiento,
+        faltanGemas: manoSecundariaVacia
+          ? 0
+          : Math.max(0, (s?.gemas.length ?? 0) - (m?.gemas.length ?? 0)),
       };
     })
     .sort((a, b) => a.ranura - b.ranura);
@@ -101,7 +105,12 @@ export function filasCooldowns(mio: PlayerFightData, suyo: PlayerFightData): Fil
   const nombres = [...new Set([...mio.timeline.cooldowns, ...suyo.timeline.cooldowns])].sort();
   const usos = (d: PlayerFightData, nombre: string) =>
     d.timeline.casteos.filter((c) => c.nombre === nombre).map((c) => c.fin);
-  return nombres.map((nombre) => ({ ref: `cd:${nombre}`, nombre, mio: usos(mio, nombre), suyo: usos(suyo, nombre) }));
+  return nombres.map((nombre) => ({
+    ref: `cd:${nombre}`,
+    nombre,
+    mio: usos(mio, nombre),
+    suyo: usos(suyo, nombre),
+  }));
 }
 
 export function filasAuras(mio: PlayerFightData, suyo: PlayerFightData): FilaAura[] {
@@ -118,7 +127,11 @@ export function filasAuras(mio: PlayerFightData, suyo: PlayerFightData): FilaAur
 }
 
 export function filasDanoRecibido(mio: PlayerFightData, suyo: PlayerFightData): FilaDanoRecibido[] {
-  return unirPorClave(mio.supervivencia.danoRecibido, suyo.supervivencia.danoRecibido, (d) => d.nombre)
+  return unirPorClave(
+    mio.supervivencia.danoRecibido,
+    suyo.supervivencia.danoRecibido,
+    (d) => d.nombre,
+  )
     .map(([nombre, m, s]) => {
       const mioPorMinuto = m?.porMinuto ?? 0;
       const suyoPorMinuto = s?.porMinuto ?? 0;

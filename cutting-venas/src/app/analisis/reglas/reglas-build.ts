@@ -6,18 +6,36 @@ import { PESOS, dpsBase, hallazgo } from './impacto';
 export const reglaTalentos: Regla = (mio, suyo) => {
   const d = diffTalentos(mio, suyo);
   const res: Hallazgo[] = [];
-  if (d.heroeMio && d.heroeSuyo && d.heroeMio !== d.heroeSuyo) {
+  const heroeDistinto = !!d.heroeMio && !!d.heroeSuyo && d.heroeMio !== d.heroeSuyo;
+  if (heroeDistinto) {
     res.push(
-      hallazgo(mio, 'build', 'heroe', `Héroe distinto: tú ${d.heroeMio}, él ${d.heroeSuyo}`, dpsBase(mio) * PESOS.heroe, 'talentos'),
+      hallazgo(
+        mio,
+        'build',
+        'heroe',
+        `Héroe distinto: tú ${d.heroeMio}, él ${d.heroeSuyo}`,
+        dpsBase(mio) * PESOS.heroe,
+        'talentos',
+      ),
     );
   }
-  const n = d.soloMios.length + d.soloSuyos.length;
+  // El héroe distinto ya se cuenta arriba: no dupliques sus talentos aquí.
+  const soloMios = heroeDistinto ? d.soloMios.filter((t) => t.arbol !== 'heroe') : d.soloMios;
+  const soloSuyos = heroeDistinto ? d.soloSuyos.filter((t) => t.arbol !== 'heroe') : d.soloSuyos;
+  const n = soloMios.length + soloSuyos.length;
   if (n > 0) {
     const partes: string[] = [];
-    if (d.soloSuyos.length) partes.push(`él lleva ${lista(d.soloSuyos.map((t) => t.nombre))}`);
-    if (d.soloMios.length) partes.push(`tú llevas ${lista(d.soloMios.map((t) => t.nombre))}`);
+    if (soloSuyos.length) partes.push(`él lleva ${lista(soloSuyos.map((t) => t.nombre))}`);
+    if (soloMios.length) partes.push(`tú llevas ${lista(soloMios.map((t) => t.nombre))}`);
     res.push(
-      hallazgo(mio, 'build', 'talentos', `Talentos distintos: ${partes.join('; ')}`, dpsBase(mio) * PESOS.talento * n, 'talentos'),
+      hallazgo(
+        mio,
+        'build',
+        'talentos',
+        `Talentos distintos: ${partes.join('; ')}`,
+        dpsBase(mio) * PESOS.talento * Math.min(n, 10),
+        'talentos',
+      ),
     );
   }
   return res;
@@ -41,7 +59,14 @@ export const reglaEquipo: Regla = (mio, suyo) => {
   for (const f of filasEquipo(mio, suyo)) {
     if (f.faltaEncantamiento) {
       res.push(
-        hallazgo(mio, 'build', `encantamiento:${f.ranura}`, `Te falta el encantamiento de ${f.nombreRanura.toLowerCase()}`, dpsBase(mio) * PESOS.encantamiento, f.ref),
+        hallazgo(
+          mio,
+          'build',
+          `encantamiento:${f.ranura}`,
+          `Te falta el encantamiento de ${f.nombreRanura.toLowerCase()}`,
+          dpsBase(mio) * PESOS.encantamiento,
+          f.ref,
+        ),
       );
     }
     if (f.faltanGemas > 0) {
@@ -64,7 +89,14 @@ export const reglaConsumibles: Regla = (mio, suyo) =>
   filasConsumibles(mio, suyo)
     .filter((f) => f.suyo && !f.mio)
     .map((f) =>
-      hallazgo(mio, 'build', `consumible:${f.tipo}`, `No usaste ${f.etiqueta.toLowerCase()} (él: ${f.suyo})`, dpsBase(mio) * PESOS.consumible, f.ref),
+      hallazgo(
+        mio,
+        'build',
+        `consumible:${f.tipo}`,
+        `No usaste ${f.etiqueta.toLowerCase()} (él: ${f.suyo})`,
+        dpsBase(mio) * PESOS.consumible,
+        f.ref,
+      ),
     );
 
 export const REGLAS_BUILD: Regla[] = [reglaTalentos, reglaEquipo, reglaConsumibles];

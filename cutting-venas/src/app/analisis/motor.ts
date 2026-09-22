@@ -1,4 +1,4 @@
-import { Bloque, PlayerFightData } from '../modelo/player-fight-data';
+import { Bloque, NOMBRES_BLOQUE, PlayerFightData } from '../modelo/player-fight-data';
 import { Comparison, Hallazgo, Regla } from './comparison';
 import {
   diffTalentos,
@@ -30,10 +30,13 @@ export function avisos(mio: PlayerFightData, suyo: PlayerFightData): string[] {
     res.push('Las peleas son de dificultades distintas');
   }
   if (mio.meta.clase !== suyo.meta.clase || mio.meta.spec !== suyo.meta.spec) {
-    res.push(`Comparas especializaciones distintas (${mio.meta.spec} ${mio.meta.clase} y ${suyo.meta.spec} ${suyo.meta.clase})`);
+    res.push(
+      `Comparas especializaciones distintas (${mio.meta.spec} ${mio.meta.clase} y ${suyo.meta.spec} ${suyo.meta.clase})`,
+    );
   }
   for (const b of Object.keys(REGLAS) as Bloque[]) {
-    if (!mio.disponible[b] || !suyo.disponible[b]) res.push(`Datos de ${b} no disponibles: se omiten sus hallazgos`);
+    if (!mio.disponible[b] || !suyo.disponible[b])
+      res.push(`Datos de ${NOMBRES_BLOQUE[b]} no disponibles: se omiten sus hallazgos`);
   }
   return res;
 }

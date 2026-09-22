@@ -5,6 +5,8 @@ import { Hallazgo, Regla } from '../comparison';
 import { filasAuras, filasCooldowns } from '../filas';
 import { PESOS, dpsBase, hallazgo } from './impacto';
 
+const usos = (n: number) => (n === 1 ? '1 uso' : `${n} usos`);
+
 export const reglaUsosCooldown: Regla = (mio, suyo) => {
   const minM = mio.meta.duracionMs / 60000;
   const minS = suyo.meta.duracionMs / 60000;
@@ -15,13 +17,22 @@ export const reglaUsosCooldown: Regla = (mio, suyo) => {
     const faltan = Math.round((f.suyo.length / minS) * minM - f.mio.length);
     if (faltan < 1) continue;
     let texto: string;
-    if (f.mio.length === 0) texto = `No usas ${f.nombre} (él: ${f.suyo.length} usos)`;
-    else if (mismaDuracion) texto = `${f.nombre}: ${f.mio.length} usos frente a ${f.suyo.length}`;
+    if (f.mio.length === 0) texto = `No usas ${f.nombre} (él: ${usos(f.suyo.length)})`;
+    else if (mismaDuracion) texto = `${f.nombre}: ${usos(f.mio.length)} frente a ${f.suyo.length}`;
     else
       texto =
         `${f.nombre}: ${num(f.mio.length / minM, 2)} usos/min frente a ${num(f.suyo.length / minS, 2)}/min ` +
         `(${f.mio.length} en ${reloj(mio.meta.duracionMs)} frente a ${f.suyo.length} en ${reloj(suyo.meta.duracionMs)})`;
-    res.push(hallazgo(mio, 'rotacion', `cd-usos:${f.nombre}`, texto, dpsBase(mio) * PESOS.usoCooldown * faltan, f.ref));
+    res.push(
+      hallazgo(
+        mio,
+        'rotacion',
+        `cd-usos:${f.nombre}`,
+        texto,
+        dpsBase(mio) * PESOS.usoCooldown * faltan,
+        f.ref,
+      ),
+    );
   }
   return res;
 };
@@ -82,4 +93,9 @@ export const reglaUptime: Regla = (mio, suyo) =>
       ),
     );
 
-export const REGLAS_ROTACION: Regla[] = [reglaUsosCooldown, reglaPrimerCooldown, reglaDowntime, reglaUptime];
+export const REGLAS_ROTACION: Regla[] = [
+  reglaUsosCooldown,
+  reglaPrimerCooldown,
+  reglaDowntime,
+  reglaUptime,
+];

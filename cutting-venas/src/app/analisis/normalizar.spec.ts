@@ -18,7 +18,12 @@ describe('normalizar (fixture real: chamán elemental)', () => {
       kill: true,
       duracionMs: 507735,
     });
-    expect(d.disponible).toEqual({ build: true, rendimiento: true, rotacion: true, supervivencia: true });
+    expect(d.disponible).toEqual({
+      build: true,
+      rendimiento: true,
+      rotacion: true,
+      supervivencia: true,
+    });
   });
 
   it('calcula DPS y el desglose por hechizo', () => {
@@ -66,7 +71,12 @@ describe('normalizar (fixture real: chamán elemental)', () => {
 describe('normalizar (otra clase: brujo de aflicción)', () => {
   it('no depende de la clase', () => {
     const d = brujo();
-    expect(d.meta).toMatchObject({ nombre: 'Mutgagarín', clase: 'Warlock', spec: 'Affliction', specId: 265 });
+    expect(d.meta).toMatchObject({
+      nombre: 'Mutgagarín',
+      clase: 'Warlock',
+      spec: 'Affliction',
+      specId: 265,
+    });
     expect(d.build.talentos.length).toBeGreaterThan(60);
     expect(d.build.heroe).toBe('Hellcaller');
     expect(d.timeline.cooldowns).toContain('Summon Darkglare');
@@ -76,7 +86,10 @@ describe('normalizar (otra clase: brujo de aflicción)', () => {
 
 describe('normalizar con datos parciales', () => {
   it('marca bloques no disponibles si faltan tablas', () => {
-    const raw = { ...RAW.rokka, detalle: { ...RAW.rokka.detalle, danoHecho: null, combatantInfo: null } };
+    const raw = {
+      ...RAW.rokka,
+      detalle: { ...RAW.rokka.detalle, danoHecho: null, combatantInfo: null },
+    };
     const d = normalizar(raw, SPECS.elemental);
     expect(d.disponible.rendimiento).toBe(false);
     expect(d.disponible.build).toBe(false);
@@ -119,6 +132,34 @@ describe('normalizar agrupa entradas con el mismo nombre', () => {
         expect(danoEntries[0].origen).toBe('B');
       }
     }
+  });
+
+  it('en Casteos: dos entradas del mismo nombre con guids distintos suman su total (no solo la última)', () => {
+    const raw = { ...RAW.rokka, detalle: { ...RAW.rokka.detalle } };
+    raw.detalle.danoHecho = {
+      ...raw.detalle.danoHecho!,
+      data: {
+        ...raw.detalle.danoHecho!.data,
+        entries: [
+          ...raw.detalle.danoHecho!.data.entries,
+          { name: 'Hechizo Duplicado', guid: 999001, type: 1, total: 1000 },
+        ],
+      },
+    };
+    raw.detalle.casteos = {
+      ...raw.detalle.casteos!,
+      data: {
+        ...raw.detalle.casteos!.data,
+        entries: [
+          ...raw.detalle.casteos!.data.entries,
+          { name: 'Hechizo Duplicado', guid: 999002, type: 8, total: 3 },
+          { name: 'Hechizo Duplicado', guid: 999003, type: 8, total: 5 },
+        ],
+      },
+    };
+    const d = normalizar(raw, SPECS.elemental);
+    const h = d.rendimiento.hechizos.find((x) => x.nombre === 'Hechizo Duplicado');
+    expect(h?.casteos).toBe(8);
   });
 
   it('en rendimiento: dos entradas del mismo nombre con uses distintos suman casts', () => {

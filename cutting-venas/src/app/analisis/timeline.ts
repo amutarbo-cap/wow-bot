@@ -27,7 +27,8 @@ export function construirCasteos(
     if (e.type !== 'cast') continue;
     const empezo = pendientes.get(e.abilityGameID);
     pendientes.delete(e.abilityGameID);
-    const inicio = empezo !== undefined && e.timestamp - empezo <= MAX_CASTEO_MS ? empezo : e.timestamp;
+    const inicio =
+      empezo !== undefined && e.timestamp - empezo <= MAX_CASTEO_MS ? empezo : e.timestamp;
     casteos.push({
       inicio: inicio - inicioPelea,
       fin: e.timestamp - inicioPelea,
@@ -38,19 +39,33 @@ export function construirCasteos(
   return casteos;
 }
 
-/** Huecos > 1,5 s entre el fin de un casteo y el inicio del siguiente, incluido el tramo final hasta el fin de la pelea. */
-export function detectarHuecos(casteos: Casteo[], duracionMs: number): Hueco[] {
+/**
+ * Huecos > 1,5 s entre el fin de un casteo y el inicio del siguiente, incluido el tramo final hasta el fin de la pelea.
+ * Un hueco que contiene una muerte (desde < t ≤ hasta) no cuenta como downtime: el jugador estaba muerto, no parado.
+ */
+export function detectarHuecos(casteos: Casteo[], duracionMs: number, muertes: number[]): Hueco[] {
+  const contieneMuerte = (desde: number, hasta: number) =>
+    muertes.some((t) => t > desde && t <= hasta);
   const huecos: Hueco[] = [];
   for (let i = 1; i < casteos.length; i++) {
     const desde = casteos[i - 1].fin;
     const hasta = casteos[i].inicio;
-    if (hasta - desde > UMBRAL_HUECO_MS) {
+    if (hasta - desde > UMBRAL_HUECO_MS && !contieneMuerte(desde, hasta)) {
       huecos.push({ desde, hasta, duracion: hasta - desde, tras: casteos[i - 1].nombre });
     }
   }
   const ultimo = casteos.at(-1);
-  if (ultimo && duracionMs - ultimo.fin > UMBRAL_HUECO_MS) {
-    huecos.push({ desde: ultimo.fin, hasta: duracionMs, duracion: duracionMs - ultimo.fin, tras: ultimo.nombre });
+  if (
+    ultimo &&
+    duracionMs - ultimo.fin > UMBRAL_HUECO_MS &&
+    !contieneMuerte(ultimo.fin, duracionMs)
+  ) {
+    huecos.push({
+      desde: ultimo.fin,
+      hasta: duracionMs,
+      duracion: duracionMs - ultimo.fin,
+      tras: ultimo.nombre,
+    });
   }
   return huecos;
 }
